@@ -15,21 +15,35 @@ DB_FILE = os.path.join(BASE, 'db.json')
 UPLOAD_DIR = os.path.join(BASE, 'static', 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# ── Database (JSON temporário) ────────────────────
+# ── Database ──────────────────────────────────────
+def create_default_db():
+    return {
+        "admin": {
+            "username": "admin",
+            "password": generate_password_hash("admin123")
+        },
+        "products": []
+    }
+
 def read_db():
+    # Se não existir → cria
     if not os.path.exists(DB_FILE):
-        default = {
-            "admin": {
-                "username": "admin",
-                "password": generate_password_hash("admin123")
-            },
-            "products": []
-        }
-        write_db(default)
-        return default
+        data = create_default_db()
+        write_db(data)
+        return data
 
     with open(DB_FILE) as f:
-        return json.load(f)
+        data = json.load(f)
+
+    # 🔥 RESET CONTROLADO (profissional)
+    if os.getenv("RESET_ADMIN") == "true":
+        data["admin"] = {
+            "username": "admin",
+            "password": generate_password_hash("admin123")
+        }
+        write_db(data)
+
+    return data
 
 def write_db(data):
     with open(DB_FILE, 'w') as f:
@@ -101,7 +115,6 @@ def create_product():
 
     image_url = '/static/uploads/placeholder.png'
 
-    # Upload imagem
     if data.get('image') and data['image'].startswith('data:'):
         match = re.match(r'data:image/(\w+);base64,(.+)', data['image'])
         if match:
